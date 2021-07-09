@@ -63,6 +63,8 @@ public class MainRunner implements CommandLineRunner {
                                 .option("password", sourceDatabaseProperties.getPassword())
                                 .load();
 
+                        //TODO analyze my columns and write out my analysis
+
                         columns.write()
                                 .mode(SaveMode.Overwrite)
                                 .format(targetDatabaseProperties.getFormat())
@@ -86,5 +88,14 @@ public class MainRunner implements CommandLineRunner {
             spark.stop();
         }
     }
+
+    // TODO use some sql to compare both tables and see if they are equal
+    //    SELECT * FROM FirstTable
+    //    UNION
+    //    SELECT * FROM SecondTable
+    //    EXCEPT
+    //    SELECT * FROM FirstTable
+    //    INTERSECT
+    //    SELECT * FROM SecondTable;
 }
 
