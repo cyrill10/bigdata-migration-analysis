@@ -439,8 +439,8 @@ DATASTAX_nodes: 3
 #
 # ===== MongoDB ========
 #
-MONGO_enable: false
-MONGO_nodes: 1
+MONGO_enable: true
+MONGO_nodes: 3
 #
 # ===== SolR ========
 #
@@ -789,7 +789,7 @@ WATCHTOWER_enable: false
 #
 # ===== Python image ========
 #
-PYTHON_enable: true
+PYTHON_enable: false
 PYTHON_script_folder: ''
 PYTHON_script: ''
       
