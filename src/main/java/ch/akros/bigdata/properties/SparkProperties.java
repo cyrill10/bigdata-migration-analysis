@@ -7,4 +7,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Data
 public class SparkProperties {
     private String master;
+
+    private String driverHost;
+
+    private String bindAdress;
+
+    private String driverPort;
+
+    private String blockManagerPort;
 }

@@ -60,5 +60,8 @@ sudo chown ${USERNAME}:${USERNAME} /home/$USERNAME/.bash_profile
 # Build environment
 platys gen
 
+sudo chown ${USERNAME}:${USERNAME} /home/$USERNAME/${GITHUB_PROJECT}/${DATAPLATFORM_HOME}/data-transfer
+sudo chown ${USERNAME}:${USERNAME} /home/$USERNAME/${GITHUB_PROJECT}/${DATAPLATFORM_HOME}/plugins/spark/jar
+
 # Startup Environment
 docker-compose up -d

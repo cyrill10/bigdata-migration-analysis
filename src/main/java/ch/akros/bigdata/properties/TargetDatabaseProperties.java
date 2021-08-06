@@ -1,14 +1,16 @@
 package ch.akros.bigdata.properties;
 
-import ch.akros.bigdata.MainRunner;
-import com.sun.tools.javac.util.List;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import java.util.Collections;
+import java.util.List;
 
 @ConfigurationProperties("database.target")
 @Data
 public class TargetDatabaseProperties {
 
+    private String driverPackage;
     private String driverName;
     private String url;
     private String user;
@@ -16,8 +18,8 @@ public class TargetDatabaseProperties {
     private String format;
     private String schemaName;
 
-    public String getResources() {
-        return MainRunner.getResourcesAsString(List.of(driverName));
+    public List<String> getResources() {
+        return Collections.singletonList(driverPackage);
     }
 
 }
