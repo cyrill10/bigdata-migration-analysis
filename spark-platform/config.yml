@@ -547,7 +547,7 @@ ORACLE_REST_DATA_SERVICE_enable: false
 #
 # ===== MySQL ========
 #
-MYSQL_enable: false
+MYSQL_enable: true
 #
 # ===== SQL Server ========
 #
