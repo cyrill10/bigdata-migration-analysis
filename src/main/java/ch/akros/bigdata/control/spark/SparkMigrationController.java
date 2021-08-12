@@ -1,6 +1,6 @@
-package ch.akros.bigdata.spark;
+package ch.akros.bigdata.control.spark;
 
-import ch.akros.bigdata.histogramm.TableHistogram;
+import ch.akros.bigdata.dto.histogramm.TableHistogram;
 import com.mongodb.spark.MongoSpark;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
@@ -45,8 +45,6 @@ public class SparkMigrationController extends SparkController {
                 .option("driver", sourceDatabaseProperties.getDriverName())
                 .load();
 
-        tables_defintions.show();
-
 
         tables_defintions.toJavaRDD().collect().forEach(table_definition -> {
                     String tableName = table_definition.getAs("TABLE_NAME");
@@ -73,7 +71,7 @@ public class SparkMigrationController extends SparkController {
 
                     Encoder<TableHistogram> encoder = Encoders.bean(TableHistogram.class);
                     Dataset<TableHistogram> histogramFrame = spark.createDataset(Collections.singletonList(tableH), encoder);
-                    MongoSpark.write(histogramFrame).option("collection", tableName).mode(SaveMode.Overwrite).save();
+                    MongoSpark.write(histogramFrame).option("collection", histogramDatabaseProperties.getCollection()).mode(SaveMode.Append).save();
 
                     table.write()
                             .mode(SaveMode.Overwrite)
@@ -98,5 +96,7 @@ public class SparkMigrationController extends SparkController {
                 .save();
 
         spark.stop();
+
+        logger.warn("Migration successful");
     }
 }

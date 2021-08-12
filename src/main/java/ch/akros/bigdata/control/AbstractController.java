@@ -1,4 +1,4 @@
-package ch.akros.bigdata;
+package ch.akros.bigdata.control;
 
 import ch.akros.bigdata.properties.HistogramDatabaseProperties;
 import ch.akros.bigdata.properties.SourceDatabaseProperties;

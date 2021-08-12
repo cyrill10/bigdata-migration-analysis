@@ -1,21 +1,22 @@
-package ch.akros.bigdata.histogramm;
+package ch.akros.bigdata.dto.histogramm;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Data
+@NoArgsConstructor
 public class TableHistogram implements Serializable {
 
-    private List<ColumnHistogram> columns;
-
     private String tableName;
+
+    private List<ColumnHistogram> columns;
 
     public TableHistogram(String tableName) {
         this.tableName = tableName;
@@ -23,10 +24,13 @@ public class TableHistogram implements Serializable {
     }
 
     public void addColumn(Dataset<Row> dataset) {
-        Map<String, String> columnMap = dataset.collectAsList().stream().collect(Collectors.toMap(row -> row.isNullAt(0) ? "null" : row.get(0).toString().replace(".", "_"), row -> String.valueOf(row.get(1))));
+        List<EntryHistogram> entryHistograms = dataset.collectAsList().stream().map(row -> EntryHistogram.builder()
+                .value(row.isNullAt(0) ? "null" : row.get(0).toString())
+                .count(String.valueOf(row.get(1)))
+                .build()).collect(Collectors.toList());
         ColumnHistogram columnHistogram = ColumnHistogram.builder()
-                .name(dataset.columns()[0])
-                .values(columnMap)
+                .columnName(dataset.columns()[0])
+                .entryHistograms(entryHistograms)
                 .build();
         this.columns.add(columnHistogram);
     }

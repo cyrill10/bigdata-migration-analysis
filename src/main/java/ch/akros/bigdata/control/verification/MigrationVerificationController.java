@@ -1,5 +1,8 @@
-package ch.akros.bigdata.spark;
+package ch.akros.bigdata.control.verification;
 
+import ch.akros.bigdata.control.spark.SparkController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.sql.*;
@@ -10,9 +13,12 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class SparkVerifyController extends SparkController {
+public class MigrationVerificationController extends SparkController {
 
     private static final int NANOSECONDS_IN_SECOND = 1000000000;
+
+
+    private static final Logger logger = LoggerFactory.getLogger(MigrationVerificationController.class);
 
     public void verifySparkCopy() {
 
@@ -29,8 +35,6 @@ public class SparkVerifyController extends SparkController {
                 ResultSet targetResultSet = target_content_stmt.executeQuery();
                 Map<Long, String> sourceIdHash = new HashMap<>();
                 Map<Long, String> targetIdHash = new HashMap<>();
-
-                System.out.println(sourceDatabaseProperties.getSchemaName() + "." + rs.getString(1));
 
                 do {
                     if (sourceResultSet.next()) {
@@ -73,14 +77,14 @@ public class SparkVerifyController extends SparkController {
 
                 List<String> missMatches = new ArrayList<>();
 
-                for (final Map.Entry<Long, String> mapEntry : sourceIdHash.entrySet()) {
+                for (Map.Entry<Long, String> mapEntry : sourceIdHash.entrySet()) {
                     if (targetIdHash.containsKey(mapEntry.getKey())) {
                         targetIdHash.remove(mapEntry.getKey());
                         continue;
                     }
                     missMatches.add(sourceDatabaseProperties.getSchemaName() + "." + rs.getString(1) + ": " + mapEntry.getValue());
                 }
-                for (final Map.Entry<Long, String> mapEntry : targetIdHash.entrySet()) {
+                for (Map.Entry<Long, String> mapEntry : targetIdHash.entrySet()) {
                     if (sourceIdHash.containsKey(mapEntry.getKey())) {
                         sourceIdHash.remove(mapEntry.getKey());
                         continue;
@@ -94,13 +98,15 @@ public class SparkVerifyController extends SparkController {
 
             }
 
+            logger.warn("Verifying Migration successful");
+
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    private Object[] getRowValues(final ResultSet resultSet, final ResultSetMetaData resultSetMetaData) throws SQLException {
+    private Object[] getRowValues(ResultSet resultSet, ResultSetMetaData resultSetMetaData) throws SQLException {
         List<Object> rowValues = new ArrayList<>();
         for (int i = 2; i < resultSetMetaData.getColumnCount(); i++) {
             if (LocalDateTime.class.getName().equalsIgnoreCase(resultSetMetaData.getColumnClassName(i)) ||
@@ -126,7 +132,7 @@ public class SparkVerifyController extends SparkController {
     }
 
 
-    private Long hash(final Object... objects) {
+    private Long hash(Object... objects) {
         StringBuilder builder = new StringBuilder();
         for (Object object : objects) {
             builder.append(object);
@@ -134,7 +140,7 @@ public class SparkVerifyController extends SparkController {
         return hash(builder.toString());
     }
 
-    private Long hash(final String string) {
+    private Long hash(String string) {
         // Must be prime of course
         long seed = 131; // 31 131 1313 13131 131313 etc..
         long hash = 0;
