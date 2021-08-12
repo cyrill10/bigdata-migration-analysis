@@ -22,88 +22,93 @@ public class MigrationVerificationController extends SparkController {
 
     public void verifySparkCopy() {
 
-        try (Connection source = DriverManager.getConnection(sourceDatabaseProperties.getUrl(), sourceDatabaseProperties.getUser(), sourceDatabaseProperties.getPassword());
-             Connection target = DriverManager.getConnection(targetDatabaseProperties.getUrl(), targetDatabaseProperties.getUser(), targetDatabaseProperties.getPassword())) {
+        List<String> missMatches = new ArrayList<>();
 
-            PreparedStatement table_stmt = source.prepareStatement("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '" + sourceDatabaseProperties.getSchemaName() + "'");
-            ResultSet rs = table_stmt.executeQuery();
-            while (rs.next()) {
-                PreparedStatement source_content_stmt = source.prepareStatement("SELECT * FROM " + sourceDatabaseProperties.getSchemaName() + "." + rs.getString(1));
-                PreparedStatement target_content_stmt = target.prepareStatement("SELECT * FROM " + targetDatabaseProperties.getSchemaName() + "." + rs.getString(1));
+        try (Connection source = DriverManager.getConnection(sourceDatabaseProperties.getUrl(), sourceDatabaseProperties
+                .getUser(), sourceDatabaseProperties.getPassword());
+             Connection target = DriverManager.getConnection(targetDatabaseProperties.getUrl(), targetDatabaseProperties
+                     .getUser(), targetDatabaseProperties.getPassword())) {
 
-                ResultSet sourceResultSet = source_content_stmt.executeQuery();
-                ResultSet targetResultSet = target_content_stmt.executeQuery();
-                Map<Long, String> sourceIdHash = new HashMap<>();
-                Map<Long, String> targetIdHash = new HashMap<>();
+            try (PreparedStatement table_stmt = source.prepareStatement("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '" + sourceDatabaseProperties
+                    .getSchemaName() + "'");
+                 ResultSet tableSet = table_stmt.executeQuery()) {
 
-                do {
-                    if (sourceResultSet.next()) {
-                        if (targetResultSet.next()) {
-                            // Compare the lines
-                            long sourceHash = hash(getRowValues(sourceResultSet, sourceResultSet.getMetaData()));
-                            long targetHash = hash(getRowValues(targetResultSet, targetResultSet.getMetaData()));
+                while (tableSet.next()) {
 
-                            sourceIdHash.put(sourceHash, sourceResultSet.getString(1));
-                            targetIdHash.put(targetHash, targetResultSet.getString(1));
+                    Map<Long, String> sourceIdHash = new HashMap<>();
+                    Map<Long, String> targetIdHash = new HashMap<>();
 
-                            if (targetIdHash.containsKey(sourceHash)) {
-                                targetIdHash.remove(sourceHash);
-                                sourceIdHash.remove(sourceHash);
+                    try (PreparedStatement source_content_stmt = source.prepareStatement("SELECT * FROM " + sourceDatabaseProperties
+                            .getSchemaName() + "." + tableSet.getString(1));
+                         PreparedStatement target_content_stmt = target.prepareStatement("SELECT * FROM " + targetDatabaseProperties
+                                 .getSchemaName() + "." + tableSet.getString(1));
+
+                         ResultSet sourceResultSet = source_content_stmt.executeQuery();
+                         ResultSet targetResultSet = target_content_stmt.executeQuery()) {
+
+                        do {
+                            if (sourceResultSet.next()) {
+                                if (targetResultSet.next()) {
+                                    // Compare the lines
+                                    long sourceHash = hash(getRowValues(sourceResultSet, sourceResultSet.getMetaData()));
+                                    long targetHash = hash(getRowValues(targetResultSet, targetResultSet.getMetaData()));
+
+                                    sourceIdHash.put(sourceHash, sourceResultSet.getString(1));
+                                    targetIdHash.put(targetHash, targetResultSet.getString(1));
+
+                                    if (targetIdHash.containsKey(sourceHash)) {
+                                        targetIdHash.remove(sourceHash);
+                                        sourceIdHash.remove(sourceHash);
+                                    }
+                                    if (sourceIdHash.containsKey(targetHash)) {
+                                        sourceIdHash.remove(targetHash);
+                                        targetIdHash.remove(targetHash);
+                                    }
+                                } else {
+                                    // Add the source row
+                                    long sourceHash = hash(getRowValues(sourceResultSet, sourceResultSet.getMetaData()));
+                                    sourceIdHash.put(sourceHash, sourceResultSet.getString(1));
+                                }
+                            } else {
+                                if (targetResultSet.next()) {
+                                    // Add the target row
+                                    long targetHash = hash(getRowValues(targetResultSet, targetResultSet.getMetaData()));
+                                    targetIdHash.put(targetHash, targetResultSet.getString(1));
+                                } else {
+                                    break;
+                                }
                             }
-                            if (sourceIdHash.containsKey(targetHash)) {
-                                sourceIdHash.remove(targetHash);
-                                targetIdHash.remove(targetHash);
-                            }
-                        } else {
-                            // Add the source row
-                            long sourceHash = hash(getRowValues(sourceResultSet, sourceResultSet.getMetaData()));
-                            sourceIdHash.put(sourceHash, sourceResultSet.getString(1));
+                        } while (true);
+                    }
+
+                    for (Map.Entry<Long, String> mapEntry : sourceIdHash.entrySet()) {
+                        if (targetIdHash.containsKey(mapEntry.getKey())) {
+                            targetIdHash.remove(mapEntry.getKey());
+                            continue;
                         }
-                    } else {
-                        if (targetResultSet.next()) {
-                            // Add the target row
-                            long targetHash = hash(getRowValues(targetResultSet, targetResultSet.getMetaData()));
-                            targetIdHash.put(targetHash, targetResultSet.getString(1));
-                        } else {
-                            break;
+                        missMatches.add(sourceDatabaseProperties.getSchemaName() + "." + tableSet.getString(1) + ": " + mapEntry
+                                .getValue());
+                    }
+                    for (Map.Entry<Long, String> mapEntry : targetIdHash.entrySet()) {
+                        if (sourceIdHash.containsKey(mapEntry.getKey())) {
+                            sourceIdHash.remove(mapEntry.getKey());
+                            continue;
                         }
+                        missMatches.add(targetDatabaseProperties.getSchemaName() + "." + tableSet.getString(1) + ": " + mapEntry
+                                .getValue());
                     }
-                } while (true);
-
-                sourceResultSet.close();
-                targetResultSet.close();
-                source_content_stmt.close();
-                target_content_stmt.close();
-
-                List<String> missMatches = new ArrayList<>();
-
-                for (Map.Entry<Long, String> mapEntry : sourceIdHash.entrySet()) {
-                    if (targetIdHash.containsKey(mapEntry.getKey())) {
-                        targetIdHash.remove(mapEntry.getKey());
-                        continue;
-                    }
-                    missMatches.add(sourceDatabaseProperties.getSchemaName() + "." + rs.getString(1) + ": " + mapEntry.getValue());
                 }
-                for (Map.Entry<Long, String> mapEntry : targetIdHash.entrySet()) {
-                    if (sourceIdHash.containsKey(mapEntry.getKey())) {
-                        sourceIdHash.remove(mapEntry.getKey());
-                        continue;
-                    }
-                    missMatches.add(targetDatabaseProperties.getSchemaName() + "." + rs.getString(1) + ": " + mapEntry.getValue());
-                }
-
-                if (!missMatches.isEmpty()) {
-                    throw new RuntimeException("not identical: " + missMatches.toString());
-                }
-
             }
-
-            logger.warn("Verifying Migration successful");
-
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
+        if (!missMatches.isEmpty()) {
+            throw new RuntimeException("not identical: " + missMatches.toString());
+        }
+
+        logger.warn("Verifying Migration successful");
     }
 
     private Object[] getRowValues(ResultSet resultSet, ResultSetMetaData resultSetMetaData) throws SQLException {

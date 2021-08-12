@@ -119,16 +119,11 @@ public class HistogramVerificationController extends SparkController {
                                                 problems.add("Histogram does not have all Entrys for: " + tableName + "." + columnName);
                                             }
                                         }
-                                    } catch (SQLException e) {
-                                        e.printStackTrace();
                                     }
-
                                 } else {
                                     problems.add("No histogram found for column: " + columnName);
                                 }
                             }
-                        } catch (SQLException e) {
-                            e.printStackTrace();
                         }
                     } else {
                         problems.add("No histogram found for table: " + tableName);
