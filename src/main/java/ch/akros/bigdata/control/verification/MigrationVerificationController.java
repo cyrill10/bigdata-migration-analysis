@@ -35,13 +35,18 @@ public class MigrationVerificationController extends SparkController {
 
                 while (tableSet.next()) {
 
-                    Map<Long, String> sourceIdHash = new HashMap<>();
-                    Map<Long, String> targetIdHash = new HashMap<>();
+                    Map<Long, String> sourceIdHashMap = new HashMap<>();
+                    Map<Long, String> targetIdHashMap = new HashMap<>();
 
                     try (PreparedStatement source_content_stmt = source.prepareStatement("SELECT * FROM " + sourceDatabaseProperties
-                            .getSchemaName() + "." + tableSet.getString(1));
+                                    .getSchemaName() + "." + tableSet.getString(1),
+                            ResultSet.TYPE_FORWARD_ONLY,
+                            ResultSet.CONCUR_READ_ONLY);
+
                          PreparedStatement target_content_stmt = target.prepareStatement("SELECT * FROM " + targetDatabaseProperties
-                                 .getSchemaName() + "." + tableSet.getString(1));
+                                         .getSchemaName() + "." + tableSet.getString(1),
+                                 ResultSet.TYPE_FORWARD_ONLY,
+                                 ResultSet.CONCUR_READ_ONLY);
 
                          ResultSet sourceResultSet = source_content_stmt.executeQuery();
                          ResultSet targetResultSet = target_content_stmt.executeQuery()) {
@@ -53,27 +58,27 @@ public class MigrationVerificationController extends SparkController {
                                     long sourceHash = hash(getRowValues(sourceResultSet, sourceResultSet.getMetaData()));
                                     long targetHash = hash(getRowValues(targetResultSet, targetResultSet.getMetaData()));
 
-                                    sourceIdHash.put(sourceHash, sourceResultSet.getString(1));
-                                    targetIdHash.put(targetHash, targetResultSet.getString(1));
+                                    sourceIdHashMap.put(sourceHash, sourceResultSet.getString(1));
+                                    targetIdHashMap.put(targetHash, targetResultSet.getString(1));
 
-                                    if (targetIdHash.containsKey(sourceHash)) {
-                                        targetIdHash.remove(sourceHash);
-                                        sourceIdHash.remove(sourceHash);
+                                    if (targetIdHashMap.containsKey(sourceHash)) {
+                                        targetIdHashMap.remove(sourceHash);
+                                        sourceIdHashMap.remove(sourceHash);
                                     }
-                                    if (sourceIdHash.containsKey(targetHash)) {
-                                        sourceIdHash.remove(targetHash);
-                                        targetIdHash.remove(targetHash);
+                                    if (sourceIdHashMap.containsKey(targetHash)) {
+                                        sourceIdHashMap.remove(targetHash);
+                                        targetIdHashMap.remove(targetHash);
                                     }
                                 } else {
                                     // Add the source row
                                     long sourceHash = hash(getRowValues(sourceResultSet, sourceResultSet.getMetaData()));
-                                    sourceIdHash.put(sourceHash, sourceResultSet.getString(1));
+                                    sourceIdHashMap.put(sourceHash, sourceResultSet.getString(1));
                                 }
                             } else {
                                 if (targetResultSet.next()) {
                                     // Add the target row
                                     long targetHash = hash(getRowValues(targetResultSet, targetResultSet.getMetaData()));
-                                    targetIdHash.put(targetHash, targetResultSet.getString(1));
+                                    targetIdHashMap.put(targetHash, targetResultSet.getString(1));
                                 } else {
                                     break;
                                 }
@@ -81,17 +86,17 @@ public class MigrationVerificationController extends SparkController {
                         } while (true);
                     }
 
-                    for (Map.Entry<Long, String> mapEntry : sourceIdHash.entrySet()) {
-                        if (targetIdHash.containsKey(mapEntry.getKey())) {
-                            targetIdHash.remove(mapEntry.getKey());
+                    for (Map.Entry<Long, String> mapEntry : sourceIdHashMap.entrySet()) {
+                        if (targetIdHashMap.containsKey(mapEntry.getKey())) {
+                            targetIdHashMap.remove(mapEntry.getKey());
                             continue;
                         }
                         missMatches.add(sourceDatabaseProperties.getSchemaName() + "." + tableSet.getString(1) + ": " + mapEntry
                                 .getValue());
                     }
-                    for (Map.Entry<Long, String> mapEntry : targetIdHash.entrySet()) {
-                        if (sourceIdHash.containsKey(mapEntry.getKey())) {
-                            sourceIdHash.remove(mapEntry.getKey());
+                    for (Map.Entry<Long, String> mapEntry : targetIdHashMap.entrySet()) {
+                        if (sourceIdHashMap.containsKey(mapEntry.getKey())) {
+                            sourceIdHashMap.remove(mapEntry.getKey());
                             continue;
                         }
                         missMatches.add(targetDatabaseProperties.getSchemaName() + "." + tableSet.getString(1) + ": " + mapEntry
