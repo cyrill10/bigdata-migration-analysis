@@ -1,6 +1,6 @@
 package ch.akros.bigdata.control.spark;
 
-import ch.akros.bigdata.dto.histogramm.TableHistogram;
+import ch.akros.bigdata.dto.histogramm.ColumnHistogram;
 import com.mongodb.spark.MongoSpark;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
@@ -39,7 +39,8 @@ public class SparkMigrationController extends SparkController {
                 .option("url", sourceDatabaseProperties.getUrl())
                 //  switch between all and only one table
 //                .option("query", "SELECT * FROM information_schema.tables WHERE table_schema = '" + sourceDatabaseProperties.getSchemaName() + "' and TABLE_NAME = 'real_account'")
-                .option("query", "SELECT * FROM information_schema.tables WHERE table_schema = '" + sourceDatabaseProperties.getSchemaName() + "'")
+                .option("query", "SELECT * FROM information_schema.tables WHERE table_schema = '" + sourceDatabaseProperties
+                        .getSchemaName() + "'")
                 .option("user", sourceDatabaseProperties.getUser())
                 .option("password", sourceDatabaseProperties.getPassword())
                 .option("driver", sourceDatabaseProperties.getDriverName())
@@ -58,20 +59,21 @@ public class SparkMigrationController extends SparkController {
                             .load();
 
 
-                    TableHistogram tableH = new TableHistogram(tableName);
-
                     // Calcualte Histogramm for each column
                     List<Dataset<Row>> histogramsForTable = Arrays.stream(table.dtypes())
                             .map(columnType -> table.groupBy(columnType._1))
                             .map(RelationalGroupedDataset::count)
                             .collect(Collectors.toList());
 
-                    // should be foreach loop
-                    histogramsForTable.forEach(tableH::addColumn);
+                    Encoder<ColumnHistogram> encoder = Encoders.bean(ColumnHistogram.class);
 
-                    Encoder<TableHistogram> encoder = Encoders.bean(TableHistogram.class);
-                    Dataset<TableHistogram> histogramFrame = spark.createDataset(Collections.singletonList(tableH), encoder);
-                    MongoSpark.write(histogramFrame).option("collection", histogramDatabaseProperties.getCollection()).mode(SaveMode.Append).save();
+                    histogramsForTable.stream()
+                            .map(ColumnHistogram::createColumnHistogram)
+                            .map(columnHistogram -> spark.createDataset(Collections.singletonList(columnHistogram), encoder))
+                            .forEach(columnHistogramDataset -> MongoSpark.write(columnHistogramDataset)
+                                    .option("collection", tableName)
+                                    .mode(SaveMode.Append)
+                                    .save());
 
                     table.write()
                             .mode(SaveMode.Overwrite)

@@ -1,3 +1,5 @@
 docker exec -ti spark-master bash
 
-spark/bin/spark-submit --packages mysql:mysql-connector-java:8.0.25,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1,org.mongodb:bson:4.2.3,org.mongodb:mongodb-driver-core:4.2.3,org.mongodb:mongodb-driver-sync:4.2.3 data-transfer/poc.jar
+# change loglevel by creating log4j.properties at spark/conf/ from template
+
+spark/bin/spark-submit --executor-memory 12G --driver-memory 12G --conf spark.rpc.message.maxSize=2047 --packages mysql:mysql-connector-java:8.0.25,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1,org.mongodb:bson:4.2.3,org.mongodb:mongodb-driver-core:4.2.3,org.mongodb:mongodb-driver-sync:4.2.3 data-transfer/poc.jar

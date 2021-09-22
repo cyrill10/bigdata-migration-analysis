@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+
 @Component
 public class MainRunner implements CommandLineRunner {
 
@@ -28,24 +30,26 @@ public class MainRunner implements CommandLineRunner {
 
         long startTime = System.currentTimeMillis();
 
+        logger.warn("Start at process at: " + LocalDateTime.now());
+
         sparkMigrationController.runSparkCopy();
 
         long endOfMigartion = System.currentTimeMillis();
 
-        logger.warn("Migration took: " + 1000 * (endOfMigartion - startTime) + " Seconds");
+        logger.warn("Migration took: " + (endOfMigartion - startTime) / 1000 + " Seconds");
 
         // verify
         sparkVerifyController.verifySparkCopy();
 
         long endOfCopyVerification = System.currentTimeMillis();
-        logger.warn("Copy Verification took: " + 1000 * (endOfCopyVerification - endOfMigartion) + " Seconds");
+        logger.warn("Copy Verification took: " + (endOfCopyVerification - endOfMigartion) / 1000 + " Seconds");
 
         histogramVerificationController.verifyHistogramCreation();
 
         long endOfHistogramVerification = System.currentTimeMillis();
-        logger.warn("Histogram Verification took: " + 1000 * (endOfHistogramVerification - endOfCopyVerification) + " Seconds");
+        logger.warn("Histogram Verification took: " + (endOfHistogramVerification - endOfCopyVerification) / 1000 + " Seconds");
 
-        logger.warn("Total Process took: " + 1000 * (endOfHistogramVerification - startTime) + " Seconds");
+        logger.warn("Total Process took: " + (endOfHistogramVerification - startTime) / 1000 + " Seconds");
     }
 }
 

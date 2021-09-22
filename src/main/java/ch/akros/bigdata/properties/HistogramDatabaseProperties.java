@@ -9,6 +9,5 @@ public class HistogramDatabaseProperties {
 
     private String url;
     private String database;
-    private String collection;
 
 }
